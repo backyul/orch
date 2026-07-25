@@ -1,0 +1,18 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+
+# Generated per-machine worker settings (absolute paths); commit the .example instead
+config/worker.settings.json
+
+# Runtime bus / state (lives under ~/.claude/orchestrator, but ignore any local copies)
+.omc/
+*.log
+*.pid
+
+# Generated per-machine orchestrator settings
+config/orchestrator.settings.json

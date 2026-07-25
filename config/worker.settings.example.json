@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "Notification": [
+      { "hooks": [{ "type": "command", "command": "node ABSOLUTE_PATH/hooks/notify-hook.mjs" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "node ABSOLUTE_PATH/hooks/ask-hook.mjs" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "node ABSOLUTE_PATH/hooks/answered-hook.mjs" }] }
+    ]
+  }
+}

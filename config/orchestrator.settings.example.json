@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "Notification": [
+      { "hooks": [{ "type": "command", "command": "node ABSOLUTE_PATH/hooks/notify-hook.mjs" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "node ABSOLUTE_PATH/hooks/ask-hook.mjs" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "node ABSOLUTE_PATH/hooks/answered-hook.mjs" }] }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "AskUserQuestion",
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(node src/cli.js:*)",
+      "Bash(tmux:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

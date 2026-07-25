@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Grid GUI — Mockup</title>
+<style>
+  /* ---------- Dark theme (default) ---------- */
+  :root, [data-theme="dark"] {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2230;
+    --border: #30363d;
+    --border-focus: #2f81f7;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --green: #3fb950;
+    --amber: #d29922;
+    --red: #f85149;
+    --accent: #2f81f7;
+    --accent-fg: #ffffff;
+    --term-bg: #0a0e14;
+    --term-fg: #d7dde6;
+    --prompt: #58a6ff;
+    --chip: #1f6feb22;
+    --chip-fg: #cfe3ff;
+  }
+  /* ---------- Claude theme (warm light) ---------- */
+  [data-theme="claude"] {
+    --bg: #ece9e2;
+    --panel: #faf9f5;
+    --panel-2: #f1efe7;
+    --border: #ddd9cc;
+    --border-focus: #d97757;
+    --text: #2b2a27;
+    --muted: #73726c;
+    --green: #1a7f37;
+    --amber: #9a6700;
+    --red: #cf222e;
+    --accent: #d97757;
+    --accent-fg: #ffffff;
+    --term-bg: #fbfaf7;
+    --term-fg: #2b2a27;
+    --prompt: #c2410c;
+    --chip: #d9775722;
+    --chip-fg: #9a3412;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    transition: background .2s, color .2s;
+  }
+
+  /* ---- Toolbar ---- */
+  .toolbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+  .toolbar .brand { font-weight: 600; letter-spacing: .3px; }
+  .toolbar .brand .dot { color: var(--accent); }
+  .toolbar .spacer { flex: 1; }
+  .btn {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--chip); border-color: var(--accent); color: var(--chip-fg); }
+  .btn.toggle.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .hint { color: var(--muted); font-size: 12px; }
+
+  /* ---- Import dropdown ---- */
+  .dropdown { position: relative; display: inline-block; }
+  .menu {
+    position: absolute; top: 112%; left: 0; min-width: 260px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 10px 30px #0006; padding: 6px; display: none; z-index: 40;
+  }
+  .menu.open { display: block; }
+  .menu .group { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 8px 8px 3px; }
+  .menu-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .menu-item:hover { background: var(--panel-2); }
+  .menu-item .sub { color: var(--muted); font-size: 11px; }
+  .menu-item.member { padding-left: 20px; }
+
+  /* ---- Grid (tiled mode) ---- */
+  .grid {
+    flex: 1 1 auto; display: grid; gap: 8px; padding: 8px; min-height: 0; position: relative;
+  }
+  .grid.cols-1 { grid-template-columns: 1fr; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ---- Pane ---- */
+  .pane {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: relative;
+  }
+  .pane.focused { border-color: var(--border-focus); box-shadow: 0 0 0 1px var(--border-focus); }
+  .pane-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; background: var(--panel-2);
+    border-bottom: 1px solid var(--border); flex: 0 0 auto; cursor: pointer;
+  }
+  .pane-title { font-size: 12px; font-weight: 600; letter-spacing: .4px; }
+  .badge {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+    padding: 2px 6px; border-radius: 10px; border: 1px solid transparent;
+  }
+  .badge.running { color: var(--green); border-color: color-mix(in srgb, var(--green) 35%, transparent); background: color-mix(in srgb, var(--green) 12%, transparent); }
+  .badge.exited  { color: var(--red);   border-color: color-mix(in srgb, var(--red) 35%, transparent);   background: color-mix(in srgb, var(--red) 12%, transparent); }
+  .badge.resuming{ color: var(--amber); border-color: color-mix(in srgb, var(--amber) 35%, transparent); background: color-mix(in srgb, var(--amber) 12%, transparent); }
+  .pane-head .spacer { flex: 1; }
+  .icon-btn {
+    background: transparent; border: 1px solid transparent; color: var(--muted);
+    border-radius: 5px; width: 24px; height: 22px; cursor: pointer; font-size: 13px; line-height: 1;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--border); }
+  .icon-btn.danger:hover { color: var(--red); border-color: var(--red); }
+
+  .term {
+    flex: 1 1 auto; background: var(--term-bg); color: var(--term-fg);
+    font-family: "Cascadia Code", "Consolas", monospace; font-size: 12px; line-height: 1.45;
+    padding: 8px 10px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  .term::-webkit-scrollbar { width: 9px; }
+  .term::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+  .term .p { color: var(--prompt); }
+  .term .ok { color: var(--green); }
+  .term .warn { color: var(--amber); }
+  .term .err { color: var(--red); }
+  .term .dim { color: var(--muted); }
+  .term .cursor { background: var(--term-fg); color: var(--term-bg); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .exited-overlay {
+    position: absolute; inset: 33px 0 0 0;
+    background: color-mix(in srgb, var(--term-bg) 80%, transparent);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; color: var(--muted);
+  }
+  .exited-overlay .code { color: var(--red); font-family: monospace; }
+
+  /* ---- zoom mode ---- */
+  body.zoomed .pane { display: none; }
+  body.zoomed .pane.zoom-target { display: flex; }
+  body.zoomed .grid { grid-template-columns: 1fr !important; }
+
+  /* ---- free (drag/resize) mode ---- */
+  body.layout-free .grid { display: block; }
+  body.layout-free .pane {
+    position: absolute; resize: both; overflow: hidden;
+    width: 380px; height: 240px; box-shadow: 0 4px 18px #0006;
+  }
+  body.layout-free .pane-head { cursor: move; }
+
+  /* ---- Spec notes ---- */
+  .note {
+    position: absolute; top: 4px; right: 4px;
+    background: var(--accent); color: var(--accent-fg);
+    font-size: 10px; border-radius: 4px; padding: 1px 5px;
+    pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 5;
+    max-width: 62%; text-align: right;
+  }
+  body.notes .note { opacity: 1; }
+  .panel-note {
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 6px;
+    margin: 0 8px 8px; padding: 10px 12px; font-size: 12.5px; color: var(--muted); display: none;
+  }
+  body.notes .panel-note { display: block; }
+  .panel-note b { color: var(--text); }
+  .panel-note code { color: var(--chip-fg); background: var(--chip); padding: 1px 4px; border-radius: 3px; }
+  .footer { padding: 4px 14px 8px; color: var(--muted); font-size: 11px; }
+
+  /* ---- Orc spawn-request banner ---- */
+  .spawn-banner {
+    display: none; margin: 8px; padding: 10px 14px; border-radius: 8px;
+    background: var(--chip); border: 1px solid var(--accent); color: var(--text);
+    align-items: center; gap: 12px;
+  }
+  .spawn-banner.show { display: flex; }
+  .spawn-banner .why { color: var(--muted); font-size: 12px; }
+  .spawn-banner .spacer { flex: 1; }
+  textarea { box-sizing: border-box; }
+
+  /* ---- Settings modal ---- */
+  .overlay {
+    position: fixed; inset: 0; background: #00000066;
+    display: none; align-items: center; justify-content: center; z-index: 50;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    width: min(560px, 92vw); max-height: 88vh; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 20px 60px #0008;
+  }
+  .modal-head {
+    display: flex; align-items: center; padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-head h2 { margin: 0; font-size: 16px; }
+  .modal-head .spacer { flex: 1; }
+  .modal-body { padding: 6px 18px 18px; }
+  .section { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .section:last-child { border-bottom: 0; }
+  .section h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+  .section .desc { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+  .field { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .field label { width: 130px; font-size: 13px; color: var(--text); }
+  .field input[type=text], .field input[type=password] {
+    flex: 1; background: var(--term-bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font-size: 13px;
+    font-family: "Cascadia Code", monospace;
+  }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .status-dot.off { background: var(--muted); }
+  .status-dot.on  { background: var(--green); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    background: var(--panel-2); color: var(--text); border: 0; padding: 7px 14px;
+    font-size: 13px; cursor: pointer; border-right: 1px solid var(--border);
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.active { background: var(--accent); color: var(--accent-fg); }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; vertical-align: -2px; margin-right: 6px; border: 1px solid #0003; }
+</style>
+</head>
+<body data-theme="claude" class="notes layout-tiled">
+
+  <div class="toolbar">
+    <span class="brand">agent<span class="dot">·</span>grid <span class="hint">— cockpit mockup</span></span>
+    <span style="position:relative">
+      <button class="btn primary" onclick="addAgent()">+ Add agent</button>
+      <span class="note">spec: GUI-driven lifecycle (replaces orc-start)</span>
+    </span>
+    <span class="dropdown">
+      <button class="btn" onclick="toggleImport(event)">⤓ Import ▾</button>
+      <div class="menu" id="importMenu"></div>
+      <span class="note">spec: Import = resume a saved team/member (vs spawn = new)</span>
+    </span>
+    <button class="btn" onclick="saveTeam()">💾 Save team as…</button>
+    <span class="spacer"></span>
+    <span class="hint" id="layoutHint"></span>
+    <button class="btn toggle on" id="notesBtn" onclick="toggleNotes()">Spec notes: ON</button>
+    <button class="btn" onclick="simulateSpawnRequest()">🧪 Simulate orc spawn request</button>
+    <button class="btn" onclick="openSettings()">⚙ Settings</button>
+  </div>
+
+  <div id="spawnBanner" class="spawn-banner"></div>
+
+  <div class="panel-note">
+    <b>How to read this mockup.</b> Each box is one Claude Code agent in its own PTY (replacing a psmux pane).
+    <b>Click a pane</b> to focus · <b>⤢</b> zoom · <b>↻</b> restart · <b>✕</b> kill · <b>+ Add agent</b> spawns one.
+    Open <b>⚙ Settings</b> to connect Claude, set the Telegram bot token, switch <b>layout (tiled ↔ free drag/resize)</b>
+    and <b>theme (Dark ↔ Claude)</b> — the theme switch is live, try it. Blue/clay tags pin UI to spec decisions.
+  </div>
+
+  <div class="grid cols-2" id="grid"></div>
+
+  <div class="footer">Mockup of <code>2026-06-22-agent-grid-gui-design.md</code> — static HTML, no backend.</div>
+
+  <!-- ---- Settings modal ---- -->
+  <div class="overlay" id="settings" onclick="if(event.target===this)closeSettings()">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>⚙ Settings</h2><span class="spacer"></span>
+        <button class="icon-btn" onclick="closeSettings()" style="width:28px;height:26px;font-size:16px">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="section">
+          <h3>Claude account</h3>
+          <p class="desc">Claude Code signs in through your Claude subscription — no password is stored here.</p>
+          <div class="field">
+            <label>Status</label>
+            <span><span class="status-dot off" id="claudeDot"></span><span id="claudeStatus">Not connected</span></span>
+            <span class="spacer" style="flex:1"></span>
+            <button class="btn primary" id="claudeBtn" onclick="connectClaude()">Connect Claude account</button>
+          </div>
+          <p class="desc" style="margin-top:6px">Opens the official Claude sign-in in your browser (OAuth). The <code style="font-family:monospace">claude</code> CLI holds the token.</p>
+        </div>
+
+        <div class="section">
+          <h3>Telegram bot</h3>
+          <p class="desc">Drives the away/escalation notifications. Saved to the gitignored <code style="font-family:monospace">.env</code>, never committed.</p>
+          <div class="field">
+            <label>Bot token</label>
+            <input type="password" id="tgToken" placeholder="123456:ABC-DEF…" />
+            <button class="btn" onclick="toggleReveal('tgToken',this)">show</button>
+          </div>
+          <div class="field">
+            <label>Chat ID</label>
+            <input type="text" id="tgChat" placeholder="987654321" />
+            <button class="btn" onclick="alert('Mock: sends a test message to verify the token + chat id.')">Test</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Appearance — Layout</h3>
+          <p class="desc">Tiled auto-arranges every pane; Free lets you drag panes by their header and resize from the corner.</p>
+          <div class="seg" id="layoutSeg">
+            <button class="active" data-mode="tiled" onclick="setLayout('tiled')">▦ Auto-tile</button>
+            <button data-mode="free" onclick="setLayout('free')">⊞ Free (drag/resize)</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Appearance — Theme</h3>
+          <p class="desc">Switches the whole cockpit, terminals included. (Live — changes apply instantly.)</p>
+          <div class="seg" id="themeSeg">
+            <button data-theme="dark" onclick="setTheme('dark')"><span class="swatch" style="background:#0d1117"></span>Dark</button>
+            <button class="active" data-theme="claude" onclick="setTheme('claude')"><span class="swatch" style="background:#d97757"></span>Claude default</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Persona editor -->
+  <div class="overlay" id="personaModal" onclick="if(event.target===this)closePersona()">
+    <div class="modal">
+      <div class="modal-head"><h2>🎭 Persona — <span id="personaName"></span></h2><span class="spacer"></span>
+        <button class="icon-btn" onclick="closePersona()" style="width:28px;height:26px;font-size:16px">✕</button></div>
+      <div class="modal-body">
+        <p class="desc" style="color:var(--muted);font-size:12px;margin:0 0 10px">Injected as <code style="font-family:monospace;color:var(--chip-fg);background:var(--chip);padding:1px 4px;border-radius:3px">claude --append-system-prompt</code> when the agent launches. Saving restarts the agent to apply it (its memory survives via <code style="font-family:monospace">--resume</code>).</p>
+        <textarea id="personaText" style="width:100%;min-height:200px;background:var(--term-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Cascadia Code',monospace;font-size:12.5px"></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn" onclick="closePersona()">Cancel</button>
+          <button class="btn primary" onclick="savePersona()">Save &amp; restart agent</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---- Default orchestrator persona (pre-filled, editable) ----
+  const DEFAULT_ORC_PERSONA =
+`You are the orchestrator. Drive the worker agents and escalate to the operator per the standing rules.
+
+Spawn tendency: if the operator asks you to do something that a dedicated worker would handle
+better (a sizable, self-contained, or parallelizable task), do NOT do it yourself and do NOT
+spawn silently. Propose a worker — suggest a name and a one-line reason — by running:
+    node src/cli.js suggest-spawn <name> "<why>"
+Then let the operator approve it. Only proceed yourself for small, quick, or coordination tasks.`;
+
+  // ---- Mock agent data ----
+  const AGENTS = [
+    { name: "ORCH", status: "running", note: "orchestrator — drives workers by name via cli.js send", persona: DEFAULT_ORC_PERSONA,
+      lines: [['p','orch › '],['',"online; standing by"],['dim','› send worker1 "run tests"  '],['ok','OK'],['p','orch › '],['cursor',' ']] },
+    { name: "WORKER1", status: "running", note: "worker PTY — receives host.send() from orchestrator",
+      lines: [['p','worker1 › '],['','npm test'],['dim','  PASS src/pty-host.test.js'],['ok','  65 passed'],['p','worker1 › '],['cursor',' ']] },
+    { name: "WORKER2", status: "resuming", note: "status badge: running / exited / resuming",
+      lines: [['warn','resuming from disk…'],['dim','claude --resume 7c1a…  (agents.json)']] },
+    { name: "WORKER3", status: "exited", exitCode: 1, note: "PTY exit keeps the slot + restart (layout preserved)", lines: [] },
+  ];
+
+  let focused = "ORCH", zoomTarget = null, layout = "tiled";
+  const freePos = {};
+
+  function badge(s){ return `<span class="badge ${s==='exited'?'exited':s==='resuming'?'resuming':'running'}">${s}</span>`; }
+  function termHTML(a){
+    if (a.status === 'exited') return '';
+    return a.lines.map(([c,t]) => c ? `<span class="${c}">${t}</span>` : t).join('');
+  }
+  function paneHTML(a){
+    const f = a.name===focused ? ' focused':'';
+    const z = a.name===zoomTarget ? ' zoom-target':'';
+    const exited = a.status==='exited';
+    return `<div class="pane${f}${z}" data-name="${a.name}" onclick="focusPane('${a.name}')">
+      <span class="note">${a.note}</span>
+      <div class="pane-head" data-drag="${a.name}" ondblclick="toggleZoom('${a.name}')">
+        <span class="pane-title">${a.name}</span>${badge(a.status)}
+        <span class="spacer"></span>
+        <button class="icon-btn" title="persona" onclick="event.stopPropagation();openPersona('${a.name}')">🎭</button>
+        <button class="icon-btn" title="zoom" onclick="event.stopPropagation();toggleZoom('${a.name}')">⤢</button>
+        <button class="icon-btn" title="restart" onclick="event.stopPropagation();restart('${a.name}')">↻</button>
+        <button class="icon-btn danger" title="kill" onclick="event.stopPropagation();kill('${a.name}')">✕</button>
+      </div>
+      <div class="term">${termHTML(a)}</div>
+      ${exited?`<div class="exited-overlay"><div>process exited <span class="code">(code ${a.exitCode})</span></div>
+        <button class="btn" onclick="event.stopPropagation();restart('${a.name}')">↻ restart</button></div>`:''}
+    </div>`;
+  }
+  function render(){
+    const grid = document.getElementById('grid');
+    const n = AGENTS.length;
+    const cols = (layout==='free') ? 1 : zoomTarget ? 1 : (n<=1?1:n<=4?2:3);
+    grid.className = 'grid cols-' + cols;
+    grid.innerHTML = AGENTS.map(paneHTML).join('');
+    document.body.classList.toggle('zoomed', !!zoomTarget && layout!=='free');
+    if (layout==='free') applyFreePositions();
+    document.getElementById('layoutHint').textContent =
+      layout==='free' ? 'free layout — drag headers, resize corners'
+      : zoomTarget ? `zoomed: ${zoomTarget} (dbl-click to restore)` : `${n} agents · auto-tiled`;
+  }
+  function applyFreePositions(){
+    [...document.querySelectorAll('.pane')].forEach((el,i) => {
+      const name = el.dataset.name;
+      if (!freePos[name]) freePos[name] = { x: 16 + i*38, y: 16 + i*30, w: 380, h: 240 };
+      const p = freePos[name];
+      el.style.left = p.x+'px'; el.style.top = p.y+'px'; el.style.width = p.w+'px'; el.style.height = p.h+'px';
+    });
+  }
+
+  function focusPane(n){ focused=n; render(); }
+  function toggleZoom(n){ if(layout==='free'){focused=n;render();return;} zoomTarget = zoomTarget===n?null:n; focused=n; render(); }
+  function restart(n){ const a=AGENTS.find(x=>x.name===n); if(!a)return;
+    a.status='resuming'; a.lines=[['warn','restarting…'],['dim','claude --resume']]; render();
+    setTimeout(()=>{a.status='running';a.exitCode=undefined;
+      a.lines=[['p',n.toLowerCase()+' › '],['ok','ready'],['p',n.toLowerCase()+' › '],['cursor',' ']];render();},1100); }
+  function kill(n){ const a=AGENTS.find(x=>x.name===n); if(!a)return;
+    a.status='exited'; a.exitCode=0; a.lines=[]; if(zoomTarget===n)zoomTarget=null; render(); }
+  function addAgent(){
+    const name=(prompt('New agent name:', 'worker'+AGENTS.length)||'').trim(); if(!name)return;
+    AGENTS.push({name:name.toUpperCase(),status:'running',note:'spawned via + Add agent → POST /spawn',
+      lines:[['p',name.toLowerCase()+' › '],['ok','spawned'],['p',name.toLowerCase()+' › '],['cursor',' ']]});
+    focused=name.toUpperCase(); render();
+  }
+  function toggleNotes(){ document.body.classList.toggle('notes');
+    const on=document.body.classList.contains('notes'); const b=document.getElementById('notesBtn');
+    b.textContent='Spec notes: '+(on?'ON':'OFF'); b.classList.toggle('on',on); }
+
+  // ---- Settings ----
+  function openSettings(){ document.getElementById('settings').classList.add('open'); }
+  function closeSettings(){ document.getElementById('settings').classList.remove('open'); }
+  function connectClaude(){
+    const dot=document.getElementById('claudeDot'), st=document.getElementById('claudeStatus'), b=document.getElementById('claudeBtn');
+    st.textContent='Opening browser…'; b.disabled=true;
+    setTimeout(()=>{ dot.className='status-dot on'; st.textContent='Connected (Claude subscription)'; b.textContent='Disconnect'; b.disabled=false; },1200);
+  }
+  function toggleReveal(id,btn){ const el=document.getElementById(id); const pw=el.type==='password';
+    el.type=pw?'text':'password'; btn.textContent=pw?'hide':'show'; }
+  function setLayout(mode){ layout=mode;
+    document.body.classList.toggle('layout-free', mode==='free');
+    document.body.classList.toggle('layout-tiled', mode==='tiled');
+    if(mode!=='free') zoomTarget=null;
+    [...document.querySelectorAll('#layoutSeg button')].forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+    render();
+  }
+  function setTheme(t){ document.body.setAttribute('data-theme',t);
+    [...document.querySelectorAll('#themeSeg button')].forEach(b=>b.classList.toggle('active',b.dataset.theme===t)); }
+
+  // ---- Free-mode dragging ----
+  let drag=null;
+  document.addEventListener('pointerdown', e=>{
+    if(layout!=='free') return;
+    const head=e.target.closest('.pane-head'); if(!head||e.target.closest('.icon-btn')) return;
+    const name=head.dataset.drag; const p=freePos[name]; if(!p) return;
+    drag={name,sx:e.clientX,sy:e.clientY,ox:p.x,oy:p.y}; head.setPointerCapture(e.pointerId);
+  });
+  document.addEventListener('pointermove', e=>{
+    if(!drag) return; const p=freePos[drag.name];
+    p.x=Math.max(0,drag.ox+(e.clientX-drag.sx)); p.y=Math.max(0,drag.oy+(e.clientY-drag.sy));
+    const el=document.querySelector(`.pane[data-name="${drag.name}"]`);
+    if(el){ el.style.left=p.x+'px'; el.style.top=p.y+'px'; }
+  });
+  document.addEventListener('pointerup', ()=>{ if(!drag) return;
+    // persist resized size too
+    const el=document.querySelector(`.pane[data-name="${drag.name}"]`);
+    if(el){ const p=freePos[drag.name]; p.w=el.offsetWidth; p.h=el.offsetHeight; }
+    drag=null; });
+
+  // ---- Teams & Import (mock) ----
+  const TEAMS = [
+    { team: '(last session)', auto: true, members: [{name:'ORCH',role:'orchestrator'},{name:'WORKER1',role:'worker'},{name:'WORKER2',role:'worker'}] },
+    { team: 'demo-project', members: [{name:'ORCH',role:'orchestrator'},{name:'BACKEND',role:'worker'},{name:'FRONTEND',role:'worker'},{name:'PARSER',role:'worker'}] },
+    { team: 'billing-refactor', members: [{name:'ORCH',role:'orchestrator'},{name:'API',role:'worker'},{name:'TESTS',role:'worker'}] },
+  ];
+  function toggleImport(e){ e.stopPropagation(); renderImportMenu(); document.getElementById('importMenu').classList.toggle('open'); }
+  function renderImportMenu(){
+    const m=document.getElementById('importMenu');
+    m.innerHTML =
+      '<div class="group">Import a team — resumes all, replaces grid</div>' +
+      TEAMS.map(t=>`<div class="menu-item" onclick="importTeam('${t.team}')"><span>${t.auto?'🕘':'📁'} ${t.team}</span><span class="sub">${t.members.length} agents · resume</span></div>`).join('') +
+      '<div class="group">…or import one member — adds a pane</div>' +
+      TEAMS.flatMap(t=>t.members.filter(x=>x.role!=='orchestrator').map(x=>`<div class="menu-item member" onclick="importMember('${t.team}','${x.name}')"><span>${t.team} / ${x.name.toLowerCase()}</span><span class="sub">resume</span></div>`)).join('');
+  }
+  function resumeInto(a){ a.status='running'; a.exitCode=undefined;
+    a.lines=[['p',a.name.toLowerCase()+' › '],['ok','context restored (claude --resume)'],['p',a.name.toLowerCase()+' › '],['cursor',' ']]; }
+  function importTeam(name){
+    document.getElementById('importMenu').classList.remove('open');
+    const t=TEAMS.find(x=>x.team===name); if(!t) return;
+    AGENTS.length=0; zoomTarget=null;
+    t.members.forEach(mem=>AGENTS.push({name:mem.name,status:'resuming',note:`imported from "${t.team}" (claude --resume)`,lines:[['warn','resuming '+mem.name.toLowerCase()+'…'],['dim','claude --resume']]}));
+    focused=AGENTS[0]?.name; render();
+    setTimeout(()=>{ AGENTS.forEach(resumeInto); render(); }, 1200);
+  }
+  function importMember(team,name){
+    document.getElementById('importMenu').classList.remove('open');
+    if(AGENTS.find(a=>a.name===name)){ alert(name+' is already in the grid'); return; }
+    const a={name,status:'resuming',note:`imported member from "${team}"`,lines:[['warn','resuming…'],['dim','claude --resume']]};
+    AGENTS.push(a); focused=name; render();
+    setTimeout(()=>{ resumeInto(a); render(); }, 1200);
+  }
+  function saveTeam(){
+    const name=(prompt('Save current team as:','my-team')||'').trim(); if(!name) return;
+    if(!TEAMS.find(t=>t.team===name)) TEAMS.push({team:name,members:AGENTS.map(a=>({name:a.name,role:a.name==='ORCH'?'orchestrator':'worker'}))});
+    alert(`Saved team "${name}" (${AGENTS.length} agents). It now appears under Import ▾.`);
+  }
+  document.addEventListener('click',()=>document.getElementById('importMenu')?.classList.remove('open'));
+
+  // ---- Persona editor ----
+  let personaEditing = null;
+  function openPersona(name){
+    const a = AGENTS.find(x=>x.name===name); if(!a) return;
+    personaEditing = name;
+    document.getElementById('personaName').textContent = name;
+    document.getElementById('personaText').value = a.persona || (name==='ORCH' ? DEFAULT_ORC_PERSONA : '');
+    document.getElementById('personaModal').classList.add('open');
+  }
+  function closePersona(){ document.getElementById('personaModal').classList.remove('open'); personaEditing = null; }
+  function savePersona(){
+    const a = AGENTS.find(x=>x.name===personaEditing);
+    if(a){
+      a.persona = document.getElementById('personaText').value;
+      a.status = 'resuming';
+      a.lines = [['warn','restarting to apply persona…'],['dim','claude --resume --append-system-prompt']];
+      const nm = a.name; render();
+      setTimeout(()=>{ const ag=AGENTS.find(x=>x.name===nm); if(ag){ resumeInto(ag); render(); } }, 1000);
+    }
+    closePersona();
+  }
+
+  // ---- Orc spawn request (propose -> approve) ----
+  function simulateSpawnRequest(){
+    showSpawnBanner('parser', 'The CSV parser refactor is large and self-contained — a dedicated worker would own it better.');
+  }
+  function showSpawnBanner(name, why){
+    const b = document.getElementById('spawnBanner');
+    b.innerHTML = `<span>🤖 <b>orch</b> proposes spawning worker <b>${name}</b></span><span class="why">${why}</span><span class="spacer"></span>`+
+      `<button class="btn primary" onclick="approveSpawn('${name}')">Approve &amp; spawn</button><button class="btn" onclick="dismissSpawn()">Dismiss</button>`;
+    b.classList.add('show');
+  }
+  function approveSpawn(name){
+    document.getElementById('spawnBanner').classList.remove('show');
+    const up = name.toUpperCase();
+    if(AGENTS.find(a=>a.name===up)){ alert(name+' already exists'); return; }
+    AGENTS.push({ name: up, status: 'running', note: 'spawned via orc proposal (operator-approved)', persona: '',
+      lines: [['p',name+' › '],['ok','spawned (approved by operator)'],['p',name+' › '],['cursor',' ']] });
+    focused = up; render();
+  }
+  function dismissSpawn(){ document.getElementById('spawnBanner').classList.remove('show'); }
+
+  render();
+</script>
+</body>
+</html>
