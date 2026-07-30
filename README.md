@@ -120,6 +120,19 @@ Other launch scripts: `./restart-host.ps1` restarts the whole stack even when th
 
 Early project, published as a reference architecture. It runs on Windows 10 / 11 with Node 18+. Issues and feedback are welcome.
 
+### A note from the author
+
+I built this because I wanted multiple Claude Code agents working together and visible at a glance — and I'm not a CLI person. tmux never stuck; a browser window full of live terminals did. So this is a tool made by someone unfamiliar with the CLI, for people in the same position, and it will show: some choices here are surely naive to experienced eyes.
+
+That's also the invitation. If you know this territory better than I do, the help that would mean the most:
+
+- **Does it run on your machine?** Windows differs box to box (locales, terminals, policies, Node builds). "It broke here, like this" issues are genuinely valuable.
+- **Security eyes on the approvals path** — the permission-prompt bridge, the allowlist tier, the chat-id gate. I'd rather hear about a hole from you than from an incident.
+- **Packaging wisdom.** The gap between "clone and run setup.ps1" and something a non-developer can install is exactly the gap I can't judge well.
+- **Telling me what's over-built or under-built.** Fresh architecture criticism is welcome; I have no pride invested in the parts being wrong, only in the whole being useful.
+
+If any of it is useful to you, use it; if you can make it better, I'd be glad of the company.
+
 Honest rough edges:
 
 - **Windows-first, single-machine.** The host binds `127.0.0.1` only; there is no network exposure, auth, or multi-machine story. macOS/Linux are untested.
